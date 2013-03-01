@@ -108,9 +108,12 @@ Each lines lists:
 License
 -------
 
-Distributed under the MIT License, see http://www.opensource.org/licenses/mit-license.php
+Distributed under the MIT License, see http://opensource.org/licenses/MIT
 
-Copyright (c) 2011 by M-PLIFY S.A./21, rue Glesener/L-1631 Luxembourg
+Copyright (c) 2011<br>
+M-PLIFY S.A.<br>
+21, rue Glesener<br>
+L-1631 Luxembourg<br>
  
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
