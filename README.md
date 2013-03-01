@@ -45,13 +45,16 @@ On one machine, install a directory tree that looks like this:
         ├── prelinkfix.sh
         └── rpmsnap.pl
 
-Now share this directory tree using a versioning system like `subversion` among all machines.
-Make sure `makesnap.sh` is called on all three machines via cron (not necessarily as root).
-Then summaries and files listing errors will generate under the hostname-specific directories.
-Note that summaries will only be created if there are differences relative to the latest summary.
+Share and synchronized this directory tree among all the machines by putting it on a network file
+system or by using a versioning system.
 
-If you now share the files via the versioning system, it is easy to check RPM database differences
-from any machine (or you can use a network file system, of course).
+Make sure `makesnap.sh` is called regularly (for example, every 2nd day) on all three machines
+via cron (not necessarily as root) by a suitable crontab entry.
+
+Then summaries and files listing errors encountered during generation will accumulate under the
+hostname-specific directories. `makesnap.sh` makes sure that a new summary is only kept 
+if there are differences relative to the previous summary. For example, the tree may look like this
+after some time:
 
     rpm/
     ├── bin
@@ -77,7 +80,10 @@ from any machine (or you can use a network file system, of course).
         ├── prelinkfix.sh
         └── rpmsnap.pl
 
-The summary files "rpmsnap.YYYY-MM-DD_hh:mm:ss.txt" contains long lines like these:
+As the directory tree is synchronized among all the machines, it is easy to check for RPM database
+differences from any machine.
+
+The summary files "rpmsnap.YYYY-MM-DD_hh:mm:ss.txt" contain long lines like these:
 
     chkconfig··································1.3.59·············1.fc17·························x86_64···Fedora·Project····:        .........     97  Wed Mar  7 18:43:59 2012
     chmlib·····································0.40···············5.fc17·························x86_64···Fedora·Project····:        .........     12  Fri Jan 13 02:33:34 2012
@@ -88,7 +94,16 @@ The summary files "rpmsnap.YYYY-MM-DD_hh:mm:ss.txt" contains long lines like the
     cln········································1.3.2··············4.fc17.1·······················x86_64···Fedora·Project····:        .........      7  Tue Feb 28 19:34:21 2012
     cloog-ppl··································0.15.11············3.fc17.1·······················x86_64···Fedora·Project····:        .........      7  Fri Jan 13 02:54:47 2012
     
-Each lines lists: name, version, release, architecture, vendor, a summary of the flags set on any file of the package, number of files for that package and the package build date.
+Each lines lists: 
+
+   - package name
+   - package version
+   - package release
+   - package architecture
+   - package vendor
+   - summary of the flags set on any file of the package
+   - number of files in the package 
+   - package build date
 
 License
 -------
