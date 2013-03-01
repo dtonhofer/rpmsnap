@@ -27,7 +27,7 @@ accumulate in a directory, tagged by creation date.</td>
 </table>
 
 Suggestion for use if you have several machines
-===============================================
+-----------------------------------------------
 
 Suppose you have three machines called hostname1, hostname2 and hostname3. 
 
@@ -91,8 +91,28 @@ The summary files "rpmsnap.YYYY-MM-DD_hh:mm:ss.txt" contains long lines like the
 Each lines lists: name, version, release, architecture, vendor, a summary of the flags set on any file of the package, number of files for that package and the package build date.
 
 License
-=======
+-------
 
-Distributed under the MIT License,
-See http://www.opensource.org/licenses/mit-license.php
+Distributed under the MIT License, see http://www.opensource.org/licenses/mit-license.php
+
+Copyright (c) 2011 by M-PLIFY S.A./21, rue Glesener/L-1631 Luxembourg
+ 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+ 
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+ 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
 
