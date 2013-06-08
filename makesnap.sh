@@ -10,10 +10,28 @@
 
 set -o nounset
 
-DIR=/usr/local/mplify                  # common directory; change as needed
+# Set the installation directory; change this as desired
+
+DIR=/usr/local/toolbox/rpmsnap
+
+# Underneath "DIR", things should presumable look like this:
+# .
+# ├── bin
+# │   └── rpmsnapcmp.pl
+# ├── data
+# │   └── yourhost.yourdomain.yourtld
+# │       ├── rpmsnap.2013-01-07_17:00:01.txt
+# │       ├── rpmsnap.2013-03-04_17:00:02.txt
+# │       ├── rpmsnap.2013-04-07_17:00:01.txt
+# │       └── rpmsnap.2013-06-07_17:00:01.txt
+# └── sbin
+#     ├── makesnap.sh
+#     ├── prelinkfix.sh
+#     └── rpmsnap.pl
+
 NOW=`date +%Y-%m-%d_%H:%M:%S`          # used in creating the suffix of files written to DATADIR
-RPMSNAP="${DIR}/rpm/sbin/rpmsnap.pl"   # the perl script that creates the list of packages
-DATADIR="${DIR}/rpm/data/`hostname`"   # result files of rpmsnap.pl go here
+RPMSNAP="${DIR}/sbin/rpmsnap.pl"       # the perl script that creates the list of packages
+DATADIR="${DIR}/data/`hostname`"       # result files of rpmsnap.pl go here
 
 # ----
 # Function to decide what to do with a new file

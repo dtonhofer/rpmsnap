@@ -9,7 +9,7 @@
 # differences is output. In case you are looking for a list of missing packages
 # to pass to "yum", use the "-p" one-liner.
 #
-# Maintainer: d.tonhofer@m-plify.com
+# Maintainer: David Tonhofer <ronerycoder@gluino.name>
 # ================================================================================
 # Distributed under the MIT License,
 # See http://www.opensource.org/licenses/mit-license.php
@@ -40,17 +40,31 @@
 use strict;
 
 # ----
-# Simple argument checking and processing, use package Getopt::Long for anything
-# more complex
+# How do we call the files passed to the program?
+# The first one given is the "reference".
+# The second one given is the "variant" which is compared against the "reference".
+# One could also name them "left-hand" and "right-hand", which is clearer for the user.
+# ----
+
+# my $refName = "left-hand";
+# my $varName = "right-hand";
+my $refName = "reference";
+my $varName = "variant";
+
+# ----
+# Simple argument checking and processing. 
+# Use package "Getopt::Long" for anything more complex than this!
 # ----
 
 if (@ARGV < 2) {
-   print STDERR "You have to give two files: 1) The reference file 2) The variant file.\n";
+   print STDERR "You have to give two files:\n";
+   print STDERR "  1) The left-hand (reference) file.\n"; 
+   print STDERR "  2) The right-hand (variant) file.\n";
    print STDERR "The variant is then compared against the reference.\n";
-   print STDERR "Additional operations:\n";
-   print STDERR "-r : reverse reference and variant\n";
-   print STDERR "-p : list packages missing in variant in one-liner\n";
-   print STDERR "-a : disregard architecture\n";
+   print STDERR "Additional options:\n";
+   print STDERR "  -r : reverse reference and variant files; saves cmdline editing\n";
+   print STDERR "  -p : list packages missing in variant in one-liner; for further processing\n";
+   print STDERR "  -a : disregard 'architecture' value when comparing; may give better matches\n";
    exit 1
 }
 
@@ -89,12 +103,12 @@ while (defined $ARGV[$ix]) {
 }
 
 if (!$variantFile) {
-   print STDERR "The variant file was not given -- exiting\n";
+   print STDERR "The $varName file was not given -- exiting\n";
    exit 1
 }
 
 if (!$referenceFile) {
-   print STDERR "The reference file was not given -- exiting\n";
+   print STDERR "The $refName file was not given -- exiting\n";
    exit 1
 }
 
@@ -107,17 +121,17 @@ if ($reverse) {
 # ----
 
 if (! -f $variantFile) {
-   print STDERR "The variant file '$variantFile' does not exist -- exiting\n";
+   print STDERR "The $varName file '$variantFile' does not exist -- exiting\n";
    exit 1
 }
 
 if (! -f $referenceFile) {
-   print STDERR "The reference file '$referenceFile' does not exist -- exiting\n";
+   print STDERR "The $refName file '$referenceFile' does not exist -- exiting\n";
    exit 1
 }
 
-my $variantLines   = slurpFile($variantFile,'variant');
-my $referenceLines = slurpFile($referenceFile,'reference');
+my $variantLines   = slurpFile($variantFile,$varName);
+my $referenceLines = slurpFile($referenceFile,$refName);
 
 # ----
 # Interpret the lines just read, filling hashes mapping "package names" to "package descriptors"
@@ -133,18 +147,18 @@ registerPackages($refPackages,$referenceLines,$referenceFile,$drgarch);
 # Compare contents of $varPackages and $refPackages
 # ----
 
-my $disappearedPackageNames    = {} ; # packages that disappeared going from "ref" to "var"; map package name to "1"
-my $appearedPackageNames       = {} ; # packages that appeared going from "ref" to "var"; map package name to "1"
-my $changedPackageList         = [] ; # accumulate detail hashes of changed packages
-my $disappearedPackageList     = [] ; # accumulate detail hashes of reference packages not matching
-my $appearedPackageList        = [] ; # accumulate detail hashes of variant packages not matching
+my $disPackageNames    = {} ; # packages that *disappeared* when going from "ref" to "var"; map package name to "1"
+my $appPackageNames    = {} ; # packages that *appeared* when going from "ref" to "var"; map package name to "1"
+my $changedPackageList = [] ; # accumulate detail hashes of changed packages
+my $disPackageList     = [] ; # accumulate detail hashes of reference packages not matching
+my $appPackageList     = [] ; # accumulate detail hashes of variant packages not matching
 
 for my $packName (sort keys %$refPackages) {
    #
    # If there is no corresponding package (with the same name) in the variant, register a missing package
    # 
    if (!exists $$varPackages{$packName}) {
-      $$disappearedPackageNames{$packName} = 1;
+      $$disPackageNames{$packName} = 1;
       next
    }
    #
@@ -164,7 +178,7 @@ for my $packName (sort keys %$refPackages) {
       else {
          # imperfect match; register difference
          my $refPackDetails = $$refPacksWithSameName{$refCompoKey};
-         findVariantCorrespondingToReference($varPacksWithSameName,$refPackDetails,$drgarch,$changedPackageList,$disappearedPackageList);
+         findVariantCorrespondingToReference($varPacksWithSameName,$refPackDetails,$drgarch,$changedPackageList,$disPackageList);
       }
    }
    #
@@ -181,7 +195,7 @@ for my $packName (sort keys %$refPackages) {
          if (!$drgarch) {
             $$details{VAR_ARCH} = $$varPackDetails{ARCH}
          }
-         push(@$appearedPackageList,$details)
+         push(@$appPackageList,$details)
       }
    }
 }
@@ -191,7 +205,7 @@ for my $packName (sort keys %$varPackages) {
    # If there is no corresponding package (with the same name) in the reference, register an appearing package
    # 
    if (!exists $$refPackages{$packName}) {
-      $$appearedPackageNames{$packName} = 1
+      $$appPackageNames{$packName} = 1
    }
 }
 
@@ -204,11 +218,11 @@ for my $packName (sort keys %$varPackages) {
 my $maxPackName = 0;
 
 { 
-   for my $str (keys %$disappearedPackageNames , keys %$appearedPackageNames) { 
+   for my $str (keys %$disPackageNames , keys %$appPackageNames) { 
       my $len = length($str); 
       if ($len > $maxPackName) { $maxPackName = $len }
    }
-   for my $packDetails (@$changedPackageList, @$disappearedPackageList, @$appearedPackageList) {
+   for my $packDetails (@$changedPackageList, @$disPackageList, @$appPackageList) {
       my $len = length("$$packDetails{NAME}");
       if ($len > $maxPackName) { $maxPackName = $len }
    }
@@ -218,11 +232,11 @@ my $maxPackName = 0;
    
 {
    my $format = "%-${maxPackName}s : %s\n";
-   for my $str (sort keys %$disappearedPackageNames) { 
-      print sprintf($format,$str,"Missing in the variant");
+   for my $str (sort keys %$disPackageNames) { 
+      print sprintf($format,$str,"Missing in the $varName");
    }
-   for my $str (sort keys %$appearedPackageNames) { 
-      print sprintf($format,$str,"Newly added in the variant");
+   for my $str (sort keys %$appPackageNames) { 
+      print sprintf($format,$str,"Newly added in the $varName");
    }
 }
 
@@ -266,7 +280,7 @@ my $maxPackName = 0;
 
 {
 
-   my $maxLen = buildMaxLengthHash($appearedPackageList);
+   my $maxLen = buildMaxLengthHash($appPackageList);
 
    my $maxVersion = $$maxLen{REF_VERSION} > $$maxLen{VAR_VERSION} ? $$maxLen{REF_VERSION} : $$maxLen{VAR_VERSION};
    my $maxRelease = $$maxLen{REF_RELEASE} > $$maxLen{VAR_RELEASE} ? $$maxLen{REF_RELEASE} : $$maxLen{VAR_RELEASE};
@@ -274,63 +288,115 @@ my $maxPackName = 0;
    my $maxVendor  = ($$maxLen{REF_VENDOR}  > $$maxLen{VAR_VENDOR}  ? $$maxLen{REF_VENDOR}  : $$maxLen{VAR_VENDOR}) + 2; # +2 to accomodate quotes
    my $maxArch    = ($$maxLen{REF_ARCH}    > $$maxLen{VAR_ARCH}    ? $$maxLen{REF_ARCH}    : $$maxLen{VAR_ARCH})   + 2; # +2 to accomodate quotes
 
-   my $disappearedFormat = "%-${maxPackName}s : %-${maxVerRel}s in reference has no counterpart in variant (%-${maxVendor}s";
-   my $appearedFormat    = "%-${maxPackName}s : %-${maxVerRel}s in variant has no counterpart in reference (%-${maxVendor}s";
+   my $disFormat = "%-${maxPackName}s : %-${maxVerRel}s in $refName has no counterpart in $varName (%-${maxVendor}s";
+   my $appFormat    = "%-${maxPackName}s : %-${maxVerRel}s in $varName has no counterpart in $refName (%-${maxVendor}s";
  
    if ($drgarch) { 
-      $disappearedFormat .= ")\n";
-      $appearedFormat    .= ")\n";
+      $disFormat .= ")\n";
+      $appFormat    .= ")\n";
    }
    else {
-      $disappearedFormat .= ", %-${maxArch}s)\n";
-      $appearedFormat    .= ", %-${maxArch}s)\n";
+      $disFormat .= ", %-${maxArch}s)\n";
+      $appFormat    .= ", %-${maxArch}s)\n";
    }
 
-   for my $packDetails (sort detailHashSort @$disappearedPackageList) {
-      my $packName   = $$packDetails{NAME};        # always exists
-      my $refVersion = $$packDetails{REF_VERSION}; # always exists
-      my $refRelease = $$packDetails{REF_RELEASE}; # always exists
-      my $refVendor  = $$packDetails{REF_VENDOR};  # always exists
-      if ($drgarch) {
-         print sprintf($disappearedFormat,"$packName","'$refVersion / $refRelease'","'$refVendor'");
-      }
-      else {
-         my $refArch = $$packDetails{REF_ARCH};
-         print sprintf($disappearedFormat,"$packName","'$refVersion / $refRelease'","'$refVendor'","'$refArch'");
-      }
-   }
+   # Sort the "appeared" and "disappered" list, then interleave the lines when printing.
+   # This makes for a better-to-read printout than just printing all the "appeared" then
+   # all the "disappeared" packages in separate loops.
+   
+   my @disSortedL = (sort detailHashSort @$disPackageList);
+   my @appSortedL = (sort detailHashSort @$appPackageList);
 
-   for my $packDetails (sort detailHashSort @$appearedPackageList) {
-      my $packName   = $$packDetails{NAME};        # always exists
-      my $varVersion = $$packDetails{VAR_VERSION}; # always exists
-      my $varRelease = $$packDetails{VAR_RELEASE}; # always exists
-      my $varVendor  = $$packDetails{VAR_VENDOR};  # always exists
-      if ($drgarch) {
-         print sprintf($appearedFormat,"$packName","'$varVersion / $varRelease'","'$varVendor'");
+   my $disSorted = \@disSortedL;
+   my $appSorted = \@appSortedL;
+
+   my $disIndex    = 0;
+   my $disIndexMax = @$disSorted * 1;
+   my $appIndex    = 0;
+   my $appIndexMax = @$appSorted * 1;
+   
+   while ($disIndex < $disIndexMax || $appIndex < $appIndexMax) {
+      my $disPackDetails; 
+      my $appPackDetails;
+      #
+      # Obtain package details if there are any in the repective list
+      #  
+      if ($disIndex < $disIndexMax) { $disPackDetails = $$disSorted[$disIndex] }
+      if ($appIndex < $appIndexMax) { $appPackDetails = $$appSorted[$appIndex] }
+      #
+      # Find out which one to write out depending on what exists
+      #   
+      if (!$disPackDetails) {
+         printAppearedPackage($appPackDetails,$drgarch,$appFormat);
+         $appIndex++
+      }
+      elsif (!$appPackDetails) {
+         printDisappearedPackage($disPackDetails,$drgarch,$disFormat);
+         $disIndex++
       }
       else {
-         my $varArch = $$packDetails{VAR_ARCH};
-         print sprintf($appearedFormat,"$packName","'$varVersion / $varRelease'","'$varVendor'","'$varArch'");
+         die unless $disPackDetails && $appPackDetails;
+         my $cmp = ($$disPackDetails{NAME} cmp $$appPackDetails{NAME}); # corresponds to "detailHashSort" used above
+         if ($cmp <= 0) {
+            printDisappearedPackage($disPackDetails,$drgarch,$disFormat);
+            $disIndex++         
+         }
+         else {
+            printAppearedPackage($appPackDetails,$drgarch,$appFormat);
+            $appIndex++
+         }
       }
    }
 }
 
 # 
-# Print results for a copy-and-paste into the command line of "yum"
+# Additionally print results for a copy-and-paste into the command line of "yum"
+# if so asked via "print" flag.
 #
 
-if ($print && (keys %$appearedPackageNames)) {
-   print "Packages to be added to variant:\n";
-   print join(" ",sort keys %$appearedPackageNames);
+if ($print && (keys %$appPackageNames)) {
+   print "Packages to be added to $varName:\n";
+   print join(" ",sort keys %$appPackageNames);
    print "\n"
 }
 
+# --------------------------------------------------------------------------------
+# Print the "disappeared" package, i.e. the reference part of "packDetails"
+# --------------------------------------------------------------------------------
 
+sub printDisappearedPackage {
+   my($packDetails,$drgarch,$disFormat) = @_;
+   my $packName   = $$packDetails{NAME};        # always exists
+   my $refVersion = $$packDetails{REF_VERSION}; # always exists
+   my $refRelease = $$packDetails{REF_RELEASE}; # always exists
+   my $refVendor  = $$packDetails{REF_VENDOR};  # always exists
+   if ($drgarch) {
+      print sprintf($disFormat,"$packName","'$refVersion / $refRelease'","'$refVendor'");
+   }
+   else {
+      my $refArch = $$packDetails{REF_ARCH};
+      print sprintf($disFormat,"$packName","'$refVersion / $refRelease'","'$refVendor'","'$refArch'");
+   }
+}
 
+# --------------------------------------------------------------------------------
+# Print the "appeared" package, i.e. the variant part of "packDetails"
+# --------------------------------------------------------------------------------
 
-
-
-
+sub printAppearedPackage {
+   my($packDetails,$drgarch,$appFormat) = @_;
+   my $packName   = $$packDetails{NAME};        # always exists
+   my $varVersion = $$packDetails{VAR_VERSION}; # always exists
+   my $varRelease = $$packDetails{VAR_RELEASE}; # always exists
+   my $varVendor  = $$packDetails{VAR_VENDOR};  # always exists
+   if ($drgarch) {
+      print sprintf($appFormat,"$packName","'$varVersion / $varRelease'","'$varVendor'");
+   }
+   else {
+      my $varArch = $$packDetails{VAR_ARCH};
+      print sprintf($appFormat,"$packName","'$varVersion / $varRelease'","'$varVendor'","'$varArch'");
+   }
+}
 
 
 # --------------------------------------------------------------------------------
@@ -458,7 +524,6 @@ sub slurpFile {
 #       (the "composite key")
 #
 #       Hash value is simply the value string corresponding to key
-#
 # --------------------------------------------------------------------------------
 
 sub registerPackages {

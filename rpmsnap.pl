@@ -4,7 +4,8 @@
 # "rpmsnap.pl": Take an audit snapshot of the current RPM package list installed 
 # on your machine and print the results to STDOUT. Also run "rpm --verify" if
 # so demanded (in case the parameter --verify has been passed)
-# Maintainer: d.tonhofer@m-plify.com
+#
+# Maintainer: David Tonhofer <ronerycoder@gluino.name>
 # ================================================================================
 # Distributed under the MIT License,
 # See http://www.opensource.org/licenses/mit-license.php
