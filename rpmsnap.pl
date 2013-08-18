@@ -157,7 +157,9 @@ for my $problem (@$packageProblems) {
 }
 
 # ---- 
-# OUTPUT: Print missing stuff to STDOUT
+# OUTPUT: Print missing stuff to STDERR 
+# (formerly to STDOUT, but it's no use in a file of records); 
+# TODO: Add a "missing" count to the output
 # ----
 
 foreach my $packageKey (sort keys %$missingStuff) {
@@ -166,7 +168,7 @@ foreach my $packageKey (sort keys %$missingStuff) {
       my $packageHash  = $$packages{$packageKey};
       my $packageName  = $$packageHash{NAME};
       my $packageDesig = $$packageHash{DESIGNATOR};
-      print sprintf("Missing file %-30s from %s\n","'$file'",$packageDesig);
+      print STDERR sprintf("Missing file %-30s from %s\n","'$file'",$packageDesig);
    }
 }
 

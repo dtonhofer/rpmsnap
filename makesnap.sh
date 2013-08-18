@@ -33,6 +33,16 @@ NOW=`date +%Y-%m-%d_%H:%M:%S`          # used in creating the suffix of files wr
 RPMSNAP="${DIR}/sbin/rpmsnap.pl"       # the perl script that creates the list of packages
 DATADIR="${DIR}/data/`hostname`"       # result files of rpmsnap.pl go here
 
+# Special hack because we have two "gefjun.homelinux.org"
+
+if [[ `hostname` == "gefjun.homelinux.org" ]]; then
+   if [[ `grep --quiet "Schrödinger’s Cat" /etc/issue` -eq 0  ]]; then
+      DATADIR=${DATADIR}.f19
+   elif [[ `grep --quiet "Beefy Miracle" /etc/issue` -eq 0  ]]; then
+      DATADIR=${DATADIR}.f17
+   fi   
+fi
+   
 # ----
 # Function to decide what to do with a new file
 # ----
@@ -54,7 +64,7 @@ function keepOrDelete {
             /bin/mv "${FILE_NEW}" "${FILE_FINAL}"
          ;;
          2)
-            echo "Some problem occurred with 'diff' -- exiting" >&2
+            echo "Some problem occurred with 'diff' (parameters were: '${FILE_NEW}' '${LATEST}') -- exiting" >&2
             exit 1
          ;;
          *)
@@ -104,7 +114,7 @@ echo "'rpmsnap' information goes to '${OUTFILE_NEW}', errors go to '${ERRFILE_NE
 
 "${RPMSNAP}" --verify >"${OUTFILE_NEW}" 2>"${ERRFILE_NEW}"
 
-if [[ $? != 0 ]]; then
+if [[ $? -ne 0 ]]; then
    echo "Problem running ${RPMSNAP} -- exiting." >&2
    echo "Errors may be in '${ERRFILE_NEW}'" >&2
    exit 1
@@ -113,7 +123,7 @@ fi
 # ----
 # Compare contents of $OUTFILE_NEW with the latest $OUTFILE created.
 # The latest $OUTFILE is simply obtained by lexicographical sorting of the contents of $DATADIR
-# Note that LATEST may not exist!
+# Note that LATEST_(OUT|ERR) may not exist yet!
 # ----
 
 LATEST_OUT=`ls ${DATADIR}/rpmsnap.*.txt 2>/dev/null | sort | tail -1`
@@ -123,6 +133,5 @@ keepOrDelete "${LATEST_OUT}" "${OUTFILE_NEW}" "${OUTFILE}"
 LATEST_ERR=`ls ${DATADIR}/rpmsnap.*.err 2>/dev/null | sort | tail -1`
 
 keepOrDelete "${LATEST_ERR}" "${ERRFILE_NEW}" "${ERRFILE}"
-
 
 

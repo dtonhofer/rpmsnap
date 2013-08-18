@@ -125,6 +125,12 @@ database (from the RPM man page; note that these may differ a bit depending the 
     T : mTime differs
     P : caPabilities differ
 
+Ideas and todos
+---------------
+
+   - Add the number of missing files to the output
+   - Compare expected package size with effective package size
+
 License
 -------
 

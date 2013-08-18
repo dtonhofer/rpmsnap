@@ -9,6 +9,12 @@
 # differences is output. In case you are looking for a list of missing packages
 # to pass to "yum", use the "-p" one-liner.
 #
+# You can also use the ouput to look for and install missing packages.
+# For example, if the run of rpmsnapcmp.pl has yielded output "OUT", you
+# could consider installing missing "perl" packages using:
+#
+# grep "perl" OUT | grep "Missing" | cut --field=1 --delimiter=":" | xargs yum -y install
+#
 # Maintainer: David Tonhofer <ronerycoder@gluino.name>
 # ================================================================================
 # Distributed under the MIT License,
@@ -58,12 +64,12 @@ my $varName = "variant";
 
 if (@ARGV < 2) {
    print STDERR "You have to give two files:\n";
-   print STDERR "  1) The left-hand (reference) file.\n"; 
-   print STDERR "  2) The right-hand (variant) file.\n";
+   print STDERR "  1) The left-hand (the reference) file.\n"; 
+   print STDERR "  2) The right-hand (the variant) file.\n";
    print STDERR "The variant is then compared against the reference.\n";
    print STDERR "Additional options:\n";
-   print STDERR "  -r : reverse reference and variant files; saves cmdline editing\n";
-   print STDERR "  -p : list packages missing in variant in one-liner; for further processing\n";
+   print STDERR "  -r : reverse reference and variant files; allows you to easily switch files around\n";
+   print STDERR "  -p : list packages missing in variant in one-liner; for further processing via yum\n";
    print STDERR "  -a : disregard 'architecture' value when comparing; may give better matches\n";
    exit 1
 }
@@ -228,27 +234,27 @@ my $maxPackName = 0;
    }
 }
 
-# printout appeared/disappeared packages (name only)
+# printout appeared/disappeared packages (names only; one could consider also adding package information)
    
 {
    my $format = "%-${maxPackName}s : %s\n";
    for my $str (sort keys %$disPackageNames) { 
-      print sprintf($format,$str,"Missing in the $varName");
+      print sprintf($format,$str,"Missing in the $varName, but found in the $refName");
    }
    for my $str (sort keys %$appPackageNames) { 
-      print sprintf($format,$str,"Newly added in the $varName");
+      print sprintf($format,$str,"Found in the $varName, but missing in the $refName");
    }
 }
 
-# printout changed packages 
+# printout packages that changed
 
 {
-   my $maxLen = buildMaxLengthHash($changedPackageList);
+   my $maxLenHash = buildMaxLengthHash($changedPackageList);
 
-   my $maxRefVerRel  = $$maxLen{REF_VERSION} + 3 + $$maxLen{REF_RELEASE} + 2;
-   my $maxVarVerRel  = $$maxLen{VAR_VERSION} + 3 + $$maxLen{VAR_RELEASE} + 2;
-   my $maxRefVendor  = $$maxLen{REF_VENDOR}  + 2; # +2 to accomodate quotes
-   my $maxRefArch    = $$maxLen{REF_ARCH}    + 2; # +2 to accomodate quotes
+   my $maxRefVerRel  = $$maxLenHash{REF_VERSION} + 3 + $$maxLenHash{REF_RELEASE} + 2;
+   my $maxVarVerRel  = $$maxLenHash{VAR_VERSION} + 3 + $$maxLenHash{VAR_RELEASE} + 2;
+   my $maxRefVendor  = $$maxLenHash{REF_VENDOR}  + 2; # +2 to accomodate quotes
+   my $maxRefArch    = $$maxLenHash{REF_ARCH}    + 2; # +2 to accomodate quotes
 
    my $format = "%-${maxPackName}s : Changed: %-${maxRefVerRel}s ---> %-${maxVarVerRel}s    (%-${maxRefVendor}s";
  
@@ -276,20 +282,23 @@ my $maxPackName = 0;
    }
 }
 
-# printout packages that appeared/disappeared but for which a package with the same name already existed
+# printout packages that appeared/disappeared but for which a package with the same name (but another architecture etc) already existed
 
 {
 
-   my $maxLen = buildMaxLengthHash($appPackageList);
+   my @ovrPackageList = ( @$appPackageList, @$disPackageList ); # merge lists
+   
+   my $maxLenHash = buildMaxLengthHash( \@ovrPackageList );
 
-   my $maxVersion = $$maxLen{REF_VERSION} > $$maxLen{VAR_VERSION} ? $$maxLen{REF_VERSION} : $$maxLen{VAR_VERSION};
-   my $maxRelease = $$maxLen{REF_RELEASE} > $$maxLen{VAR_RELEASE} ? $$maxLen{REF_RELEASE} : $$maxLen{VAR_RELEASE};
-   my $maxVerRel  = $maxVersion + 3 + $maxRelease + 2; # +2 to accomodate quotes
-   my $maxVendor  = ($$maxLen{REF_VENDOR}  > $$maxLen{VAR_VENDOR}  ? $$maxLen{REF_VENDOR}  : $$maxLen{VAR_VENDOR}) + 2; # +2 to accomodate quotes
-   my $maxArch    = ($$maxLen{REF_ARCH}    > $$maxLen{VAR_ARCH}    ? $$maxLen{REF_ARCH}    : $$maxLen{VAR_ARCH})   + 2; # +2 to accomodate quotes
+   my $maxVersion = max($$maxLenHash{REF_VERSION} , $$maxLenHash{VAR_VERSION});
+   my $maxRelease = max($$maxLenHash{REF_RELEASE} , $$maxLenHash{VAR_RELEASE});
+
+   my $maxVerRel  = $maxVersion + 3 + $maxRelease                                + 2; # +2 to accommodate quotes
+   my $maxVendor  = max($$maxLenHash{REF_VENDOR}  , $$maxLenHash{VAR_VENDOR})    + 2; # +2 to accommodate quotes
+   my $maxArch    = max($$maxLenHash{REF_ARCH}    , $$maxLenHash{VAR_ARCH})      + 2; # +2 to accommodate quotes
 
    my $disFormat = "%-${maxPackName}s : %-${maxVerRel}s in $refName has no counterpart in $varName (%-${maxVendor}s";
-   my $appFormat    = "%-${maxPackName}s : %-${maxVerRel}s in $varName has no counterpart in $refName (%-${maxVendor}s";
+   my $appFormat = "%-${maxPackName}s : %-${maxVerRel}s in $varName has no counterpart in $refName (%-${maxVendor}s";
  
    if ($drgarch) { 
       $disFormat .= ")\n";
@@ -401,24 +410,26 @@ sub printAppearedPackage {
 
 # --------------------------------------------------------------------------------
 # Build map of "max string length encountered" for a set of keys
+# Each of the "keys" given below will have a value; if the key is not encountered
+# in the passed hash, it will be 0.
 # --------------------------------------------------------------------------------
 
 sub buildMaxLengthHash {
    my($packDetailsList) = @_;
-   my $maxLen = {};
+   my $maxLenHash = {};
    my $keys   = [ 'REF_VENDOR','REF_VERSION','REF_RELEASE','VAR_VERSION','VAR_RELEASE','REF_ARCH', 'VAR_VENDOR', 'VAR_ARCH' ];
    for my $key (@$keys) { 
-      $$maxLen{$key} = 0 
+      $$maxLenHash{$key} = 0 
    }
    for my $packDetails (@$packDetailsList) {
       for my $key (@$keys) { 
          if (exists $$packDetails{$key}) {            
             my $len = length("$$packDetails{$key}");
-            if ($len > $$maxLen{$key}) { $$maxLen{$key} = $len }
+            if ($len > $$maxLenHash{$key}) { $$maxLenHash{$key} = $len }
          }
       }
    }
-   return $maxLen
+   return $maxLenHash
 }
 
 # --------------------------------------------------------------------------------
@@ -563,8 +574,22 @@ sub registerPackages {
          }
       }
       else {
-         print STDERR "Could not parse line '$line'\n";
+         print STDERR "Could not parse line '$line'\n"
       }
+   }
+}
+
+# --------------------------------------------------------------------------------
+# Numerical max
+# --------------------------------------------------------------------------------
+
+sub max {
+   my($a,$b) = @_;
+   if ($a > $b) {
+      return $a
+   }
+   else {
+      return $b
    }
 }
 
