@@ -33,14 +33,18 @@ NOW=`date +%Y-%m-%d_%H:%M:%S`          # used in creating the suffix of files wr
 RPMSNAP="${DIR}/sbin/rpmsnap.pl"       # the perl script that creates the list of packages
 DATADIR="${DIR}/data/`hostname`"       # result files of rpmsnap.pl go here
 
-# Special hack because we have the same host with different OS
+# Special hack because we have two "gefjun.homelinux.org"
 
-if [[ `hostname` == "something.example.com" ]]; then
-   if [[ `grep --quiet "Schrödinger’s Cat" /etc/issue` -eq 0  ]]; then
+if [[ `hostname` == "gefjun.homelinux.org" ]]; then
+   grep --quiet "Schrödinger’s Cat" /etc/issue
+   if [[ $? -eq 0  ]]; then
       DATADIR=${DATADIR}.f19
-   elif [[ `grep --quiet "Beefy Miracle" /etc/issue` -eq 0  ]]; then
-      DATADIR=${DATADIR}.f17
-   fi   
+   else
+      grep --quiet "Beefy Miracle" /etc/issue
+      if [[ $? -eq 0  ]]; then
+         DATADIR=${DATADIR}.f17
+      fi   
+   fi
 fi
    
 # ----
