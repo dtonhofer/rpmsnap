@@ -31,11 +31,30 @@ DIR=/usr/local/toolbox/rpmsnap
 
 NOW=`date +%Y-%m-%d_%H:%M:%S`          # used in creating the suffix of files written to DATADIR
 RPMSNAP="${DIR}/sbin/rpmsnap.pl"       # the perl script that creates the list of packages
-DATADIR="${DIR}/data/`hostname`"       # result files of rpmsnap.pl go here
 
-# Special hack because we have two "gefjun.homelinux.org"
+# Finding the fully qualified hostname is a bizarre undertaking
 
-if [[ `hostname` == "gefjun.homelinux.org" ]]; then
+HOSTNAME=`hostname --short`
+DOMAINNAME=`domainname`
+
+if [[ $DOMAINNAME == "(none)" ]]; then
+   DOMAINNAME=localdomain
+fi
+
+if [[ -n $DOMAINNAME ]]; then
+   HOSTNAME="${HOSTNAME}.${DOMAINNAME}"
+fi
+
+# result files of "rpmsnap.pl" go here
+
+DATADIR="${DIR}/data/${HOSTNAME}"  
+
+# Special hack because there is a machine with the same FQ hostname but which uses different OS
+# depending on time of week!
+
+DOUBLE_PERSONALITY_HOST=some.random.host.org
+
+if [[ ${HOSTNAME} == ${DOUBLE_PERSONALITY_HOST} ]]; then
    grep --quiet "Schrödinger’s Cat" /etc/issue
    if [[ $? -eq 0  ]]; then
       DATADIR=${DATADIR}.f19
