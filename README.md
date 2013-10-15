@@ -47,7 +47,9 @@ On one machine, install a directory tree that looks like this:
     │   ├── bravo.example.com/
     │   └── charlie.example.com/
     └── sbin/
+        ├── getHostname_function.sh
         ├── makesnap.sh
+        ├── prelinkfix.sh
         └── rpmsnap.pl
 
 Share and synchronize this directory tree among all the machines by putting it on a network file
@@ -84,8 +86,10 @@ Then the tree may look like this after some time:
     │       ├── rpmsnap.2013-02-19_17:00:01.txt
     │       ├── rpmsnap.2013-02-22_17:00:01.txt
     │       └── rpmsnap.2013-02-25_17:00:02.txt
-    └── sbin
+    └── sbin/
+        ├── getHostname_function.sh
         ├── makesnap.sh
+        ├── prelinkfix.sh
         └── rpmsnap.pl
 
 It is thus easy to check for RPM database differences from any machine.
