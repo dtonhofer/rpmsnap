@@ -14,6 +14,14 @@ set -o nounset
 
 DIR=/usr/local/toolbox/rpmsnap
 
+# Source a function to determine the hostname
+
+source ${DIR}/sbin/getHostname_function.sh
+
+if [[ $? != 0 ]]; then
+   echo "Could not source the getHostname() function -- exiting" >&2; exit 1
+fi
+
 # Underneath "DIR", things should presumable look like this:
 # .
 # ├── bin
@@ -25,6 +33,7 @@ DIR=/usr/local/toolbox/rpmsnap
 # │       ├── rpmsnap.2013-04-07_17:00:01.txt
 # │       └── rpmsnap.2013-06-07_17:00:01.txt
 # └── sbin
+#     ├── getHostname_function.sh
 #     ├── makesnap.sh
 #     ├── prelinkfix.sh
 #     └── rpmsnap.pl
@@ -32,18 +41,10 @@ DIR=/usr/local/toolbox/rpmsnap
 NOW=`date +%Y-%m-%d_%H:%M:%S`          # used in creating the suffix of files written to DATADIR
 RPMSNAP="${DIR}/sbin/rpmsnap.pl"       # the perl script that creates the list of packages
 
-# Finding the fully qualified hostname is a bizarre undertaking
+# determine the hostname
 
-HOSTNAME=`hostname --short`
-DOMAINNAME=`domainname`
-
-if [[ $DOMAINNAME == "(none)" ]]; then
-   DOMAINNAME=localdomain
-fi
-
-if [[ -n $DOMAINNAME ]]; then
-   HOSTNAME="${HOSTNAME}.${DOMAINNAME}"
-fi
+HOSTNAME=$(getHostname)
+echo "HOSTNAME set to '$HOSTNAME'"
 
 # result files of "rpmsnap.pl" go here
 
