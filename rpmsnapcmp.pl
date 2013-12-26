@@ -360,12 +360,13 @@ my $maxPackName = 0;
 
 # 
 # Additionally print results for a copy-and-paste into the command line of "yum"
-# if so asked via "print" flag.
+# if so asked via "print" flag: the packages that disappeared in the variant, and
+# thus may have to be added.
 #
 
-if ($print && (keys %$appPackageNames)) {
+if ($print && (keys %$disPackageNames)) {
    print "Packages to be added to $varName:\n";
-   print join(" ",sort keys %$appPackageNames);
+   print join(" ",sort keys %$disPackageNames);
    print "\n"
 }
 

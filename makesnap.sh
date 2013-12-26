@@ -6,22 +6,7 @@
 # In root's crontab, one may have for example:
 #
 # 00 17 */3 * * $DIR/rpm/sbin/makesnap.sh 2>/dev/null
-# ==================================================================================
-
-set -o nounset
-
-# Set the installation directory; change this as desired
-
-DIR=/usr/local/toolbox/rpmsnap
-
-# Source a function to determine the hostname
-
-source ${DIR}/sbin/getHostname_function.sh
-
-if [[ $? != 0 ]]; then
-   echo "Could not source the getHostname() function -- exiting" >&2; exit 1
-fi
-
+#
 # Underneath "DIR", things should presumable look like this:
 # .
 # ├── bin
@@ -37,36 +22,85 @@ fi
 #     ├── makesnap.sh
 #     ├── prelinkfix.sh
 #     └── rpmsnap.pl
+#
+# ==================================================================================
 
-NOW=`date +%Y-%m-%d_%H:%M:%S`          # used in creating the suffix of files written to DATADIR
-RPMSNAP="${DIR}/sbin/rpmsnap.pl"       # the perl script that creates the list of packages
+set -o nounset
 
-# determine the hostname
+# Set the installation directory; ** change this as desired **
 
-HOSTNAME=$(getHostname)
-echo "HOSTNAME set to '$HOSTNAME'"
+DIR=/usr/local/toolbox/rpmsnap
 
-# result files of "rpmsnap.pl" go here
+# Used in creating the suffix of files written to DATADIR
 
-DATADIR="${DIR}/data/${HOSTNAME}"  
+NOW=`date +%Y-%m-%d_%H:%M:%S`
 
-# Special hack because there is a machine with the same FQ hostname but which uses different OS
-# depending on time of week!
+# Source a function to determine the hostname
+
+F1=$DIR/sbin/getHostname_function.sh
+source $F1
+if [[ $? != 0 ]]; then
+   echo "Could not source the getHostname() function from '$F1' -- exiting" >&2
+   exit 1
+fi
+
+# Perl script that creates the list of packages
+
+RPMSNAP=$DIR/sbin/rpmsnap.pl
+if [[ ! -x $RPMSNAP ]]; then
+   echo "Script '$RPMSNAP' not found or not executable -- exiting" >&2
+   exit 1
+fi
+
+# Determine the hostname; the shell should provide its own HOSTNAME value and one
+# should use that; here we are overly cautious
+
+MYHOSTNAME=$(getHostname)
+echo "Hostname determined to be '$MYHOSTNAME'" >&2
+
+# Result files of "rpmsnap.pl" go into the DATADIR, which depends on the MYHOSTNAME
+
+DATADIR=$DIR/data/$MYHOSTNAME  
+
+# ----
+# Special hack because there is a machine with the same hostname but which uses different OS
+# depending on time of week (here only for several Fedora releases)
+# ----
 
 DOUBLE_PERSONALITY_HOST=some.random.host.org
 
-if [[ ${HOSTNAME} == ${DOUBLE_PERSONALITY_HOST} ]]; then
+function makeFedoraSuffix {
+   # https://fedoraproject.org/wiki/History_of_Fedora_release_names
+   grep --quiet "Heisenbug" /etc/issue
+   if [[ $? -eq 0  ]]; then
+      echo ".f20"
+      return
+   fi
    grep --quiet "Schrödinger’s Cat" /etc/issue
    if [[ $? -eq 0  ]]; then
-      DATADIR=${DATADIR}.f19
-   else
-      grep --quiet "Beefy Miracle" /etc/issue
-      if [[ $? -eq 0  ]]; then
-         DATADIR=${DATADIR}.f17
-      fi   
+      echo ".f19"
+      return
    fi
+   grep --quiet "Spherical Cow" /etc/issue
+   if [[ $? -eq 0  ]]; then
+      echo ".f18"
+      return
+   fi
+   grep --quiet "Beefy Miracle" /etc/issue
+   if [[ $? -eq 0  ]]; then
+      echo ".f17"
+      return
+   fi
+   # else no suffix
+}
+
+if [[ $DOUBLE_PERSONALITY_HOST == $MYHOSTNAME ]]; then
+   SUFFIX=`makeFedoraSuffix`
+   DATADIR="${DATADIR}${SUFFIX}"
 fi
-   
+
+echo "Target directory is '$DATADIR'" >&2
+
 # ----
 # Function to decide what to do with a new file
 # ----
@@ -75,30 +109,30 @@ function keepOrDelete {
    local LATEST=$1
    local FILE_NEW=$2
    local FILE_FINAL=$3
-   if [[ -n ${LATEST} ]]; then
-      diff "${FILE_NEW}" "${LATEST}" > /dev/null
+   if [[ -n $LATEST ]]; then
+      diff "$FILE_NEW" "$LATEST" > /dev/null
       local RETVAL=$?
-      case ${RETVAL} in
+      case $RETVAL in
          0)
-            echo "No differences found between '${FILE_NEW}' and '${LATEST}' -- deleting '${FILE_NEW}'" >&2
-            /bin/rm "${FILE_NEW}"      
+            echo "No differences found between '$FILE_NEW' and '$LATEST' -- deleting '$FILE_NEW'" >&2
+            /bin/rm "$FILE_NEW"      
          ;;
          1)
-            echo "Differences found between '${FILE_NEW}' and '${LATEST}' -- keeping '${FILE_NEW}'" >&2
-            /bin/mv "${FILE_NEW}" "${FILE_FINAL}"
+            echo "Differences found between '$FILE_NEW' and '$LATEST' -- keeping '$FILE_NEW'" >&2
+            /bin/mv "$FILE_NEW" "$FILE_FINAL"
          ;;
          2)
-            echo "Some problem occurred with 'diff' (parameters were: '${FILE_NEW}' '${LATEST}') -- exiting" >&2
+            echo "Some problem occurred with 'diff' (parameters were: '$FILE_NEW' '$LATEST') -- exiting" >&2
             exit 1
          ;;
          *)
-            echo "Unexpected returnvalue ${RETVAL} from 'diff' -- exiting" >&2
+            echo "Unexpected returnvalue $RETVAL from 'diff' -- exiting" >&2
             exit 1
          ;;
       esac
    else 
       # No latest - just keep current
-      /bin/mv "${FILE_NEW}" "${FILE_FINAL}"
+      /bin/mv "$FILE_NEW" "$FILE_FINAL"
    fi
 }
 
@@ -134,13 +168,14 @@ OUTFILE_NEW="${OUTFILE}.new"
 ERRFILE="${DATADIR}/rpmsnap.${NOW}.err"
 ERRFILE_NEW="${ERRFILE}.new"
 
-echo "'rpmsnap' information goes to '${OUTFILE_NEW}', errors go to '${ERRFILE_NEW}'" >&2
+echo "'rpmsnap' information goes to '$OUTFILE_NEW'" >&2
+echo "'rpmsnap' errors go to '$ERRFILE_NEW'" >&2
 
-"${RPMSNAP}" --verify >"${OUTFILE_NEW}" 2>"${ERRFILE_NEW}"
+"$RPMSNAP" --verify >"$OUTFILE_NEW" 2>"$ERRFILE_NEW"
 
 if [[ $? -ne 0 ]]; then
-   echo "Problem running ${RPMSNAP} -- exiting." >&2
-   echo "Errors may be in '${ERRFILE_NEW}'" >&2
+   echo "Problem running '$RPMSNAP' -- exiting." >&2
+   echo "Errors may be in '$ERRFILE_NEW'" >&2
    exit 1
 fi
 
@@ -150,12 +185,12 @@ fi
 # Note that LATEST_(OUT|ERR) may not exist yet!
 # ----
 
-LATEST_OUT=`ls ${DATADIR}/rpmsnap.*.txt 2>/dev/null | sort | tail -1`
+LATEST_OUT=`ls "$DATADIR/rpmsnap.*.txt" 2>/dev/null | sort | tail -1`
 
-keepOrDelete "${LATEST_OUT}" "${OUTFILE_NEW}" "${OUTFILE}"
+keepOrDelete "$LATEST_OUT" "$OUTFILE_NEW" "$OUTFILE"
 
-LATEST_ERR=`ls ${DATADIR}/rpmsnap.*.err 2>/dev/null | sort | tail -1`
+LATEST_ERR=`ls "$DATADIR/rpmsnap.*.err" 2>/dev/null | sort | tail -1`
 
-keepOrDelete "${LATEST_ERR}" "${ERRFILE_NEW}" "${ERRFILE}"
+keepOrDelete "$LATEST_ERR" "$ERRFILE_NEW" "$ERRFILE"
 
 
