@@ -1,8 +1,9 @@
 rpmsnap
 =======
 
-A simple set of scripts to compare the contents of RPM databases on different machines, or 
-on the same machine at different times.
+A simple set of scripts to compare the contents of [RPM package manager databases](http://en.wikipedia.org/wiki/RPM_Package_Manager) of different machines, or of the same machine at different times.
+
+_Status: Good for general use!_
 
 There are three scripts:
 
@@ -32,7 +33,7 @@ Similar programs
 Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). 
 It uses `ssh(1)` to grab a dump of the remote RPM database.
 
-Suggestion for use if you have several machines (and NFS or SVN)
+Suggestion for use if you have several machines
 -----------------------------------------------
 
 Suppose you have three machines called 'alpha.example.com', 'bravo.example.com' and 'charlie.example.com'.
@@ -53,7 +54,7 @@ On one machine, install a directory tree that looks like this:
         └── rpmsnap.pl
 
 Share and synchronize this directory tree among all the machines by putting it on a network file
-system or by using a versioning system.
+system or by using a versioning system like svn or git.
 
 Make sure `makesnap.sh` is called regularly (for example, every 2nd day) on all the machines
 via cron (not necessarily as root) by a suitable crontab entry.
@@ -138,12 +139,12 @@ Ideas and todos
 License
 -------
 
-Distributed under the MIT License, see http://opensource.org/licenses/MIT
+Distributed under the [MIT License](http://opensource.org/licenses/MIT); copyright held by author's former employer.
 
 Copyright (c) 2011<br>
 M-PLIFY S.A.<br>
-21, rue Glesener<br>
-L-1631 Luxembourg<br>
+68, avenue de la Liberté<br>
+L-1930 Luxembourg<br>
  
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -162,5 +163,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
-
