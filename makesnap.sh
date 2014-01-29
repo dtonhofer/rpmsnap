@@ -185,11 +185,11 @@ fi
 # Note that LATEST_(OUT|ERR) may not exist yet!
 # ----
 
-LATEST_OUT=`ls "$DATADIR/rpmsnap.*.txt" 2>/dev/null | sort | tail -1`
+LATEST_OUT=`ls "$DATADIR"/rpmsnap.*.txt 2>/dev/null | sort | tail -1`
 
 keepOrDelete "$LATEST_OUT" "$OUTFILE_NEW" "$OUTFILE"
 
-LATEST_ERR=`ls "$DATADIR/rpmsnap.*.err" 2>/dev/null | sort | tail -1`
+LATEST_ERR=`ls "$DATADIR"/rpmsnap.*.err 2>/dev/null | sort | tail -1`
 
 keepOrDelete "$LATEST_ERR" "$ERRFILE_NEW" "$ERRFILE"
 
