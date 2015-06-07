@@ -35,7 +35,7 @@ DIR=/usr/local/toolbox/rpmsnap
 
 NOW=`date +%Y-%m-%d_%H:%M:%S`
 
-# Source a function to determine the hostname
+# Source a function to determine the hostname (this may be serious overkill)
 
 F1=$DIR/sbin/getHostname_function.sh
 source $F1
@@ -67,7 +67,7 @@ DATADIR=$DIR/data/$MYHOSTNAME
 # depending on time of week (here only for several Fedora releases)
 # ----
 
-DOUBLE_PERSONALITY_HOST=some.random.host.org
+DOUBLE_PERSONALITY_HOST=somehost.example.com
 
 function makeFedoraSuffix {
    # https://fedoraproject.org/wiki/History_of_Fedora_release_names
@@ -109,30 +109,35 @@ function keepOrDelete {
    local LATEST=$1
    local FILE_NEW=$2
    local FILE_FINAL=$3
-   if [[ -n $LATEST ]]; then
-      diff "$FILE_NEW" "$LATEST" > /dev/null
-      local RETVAL=$?
-      case $RETVAL in
-         0)
-            echo "No differences found between '$FILE_NEW' and '$LATEST' -- deleting '$FILE_NEW'" >&2
-            /bin/rm "$FILE_NEW"      
-         ;;
-         1)
-            echo "Differences found between '$FILE_NEW' and '$LATEST' -- keeping '$FILE_NEW'" >&2
-            /bin/mv "$FILE_NEW" "$FILE_FINAL"
-         ;;
-         2)
-            echo "Some problem occurred with 'diff' (parameters were: '$FILE_NEW' '$LATEST') -- exiting" >&2
-            exit 1
-         ;;
-         *)
-            echo "Unexpected returnvalue $RETVAL from 'diff' -- exiting" >&2
-            exit 1
-         ;;
-      esac
+   if [[ -s $FILE_NEW ]]; then 
+      if [[ -n $LATEST ]]; then
+         diff "$FILE_NEW" "$LATEST" > /dev/null
+         local RETVAL=$?
+         case $RETVAL in
+            0)
+               echo "No differences found between '$FILE_NEW' and '$LATEST' -- deleting '$FILE_NEW'" >&2
+               /bin/rm "$FILE_NEW"      
+            ;;
+            1)
+               echo "Differences found between '$FILE_NEW' and '$LATEST' -- keeping '$FILE_NEW' as '$FILE_FINAL'" >&2
+               /bin/mv "$FILE_NEW" "$FILE_FINAL"
+            ;;
+            2)
+               echo "Some problem occurred with 'diff' (parameters were: '$FILE_NEW' '$LATEST') -- exiting" >&2
+               exit 1
+            ;;
+            *)
+               echo "Unexpected returnvalue $RETVAL from 'diff' -- exiting" >&2
+               exit 1
+            ;;
+         esac
+      else 
+         # No "latest" to compare against - keep FILE_NEW
+         /bin/mv "$FILE_NEW" "$FILE_FINAL"
+      fi
    else 
-      # No latest - just keep current
-      /bin/mv "$FILE_NEW" "$FILE_FINAL"
+      # FILE_NEW does not exist or is empty
+      /bin/rm "$FILE_NEW"
    fi
 }
 
