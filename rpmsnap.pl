@@ -56,6 +56,7 @@ if ($ARGV[0]) {
 # "queryfmt" says how the output of "rpm --query" is formatted: what fields and how they are displayed
 # Note that the name is the package's software name, e.g. "kernel" and that the text output by
 # "rpm --query FOO" is a composite of "name", "version" and "release", e.g. "kernel-3.5.2-3.fc17.x86_64"
+# List all the available tags by running 'rpm --querytags'
 # ----
 
 my $queryfmt = "ARCH: %{ARCH}\\nNAME: %{NAME}\\nVERSION: %{VERSION}\\nRELEASE: %{RELEASE}\\nBUILDTIME: %{BUILDTIME:date}\\nVENDOR: %{VENDOR}\\n";
