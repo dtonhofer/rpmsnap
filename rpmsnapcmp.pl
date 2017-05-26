@@ -44,6 +44,10 @@
 # ================================================================================
 
 use strict;
+use Getopt::Std;
+use File::Basename;
+use File::Spec::Functions;
+use Sys::Hostname;
 
 # ----
 # How do we call the files passed to the program?
@@ -52,89 +56,199 @@ use strict;
 # One could also name them "left-hand" and "right-hand", which is clearer for the user.
 # ----
 
-# my $refName = "left-hand";
-# my $varName = "right-hand";
 my $refName = "reference";
 my $varName = "variant";
 
 # ----
-# Simple argument checking and processing. 
-# Use package "Getopt::Long" for anything more complex than this!
+# Argument checking and processing. 
 # ----
 
-if (@ARGV < 2) {
-   print STDERR "You have to give two files:\n";
-   print STDERR "  1) The left-hand (the reference) file.\n"; 
-   print STDERR "  2) The right-hand (the variant) file.\n";
-   print STDERR "The variant is then compared against the reference.\n";
-   print STDERR "Additional options:\n";
-   print STDERR "  -r : reverse reference and variant files; allows you to easily switch files around\n";
-   print STDERR "  -p : list packages missing in variant in one-liner; for further processing via yum\n";
-   print STDERR "  -a : disregard 'architecture' value when comparing; may give better matches\n";
-   exit 1
+sub numerize {
+   my ($x) = @_;
+   $x =~ /\.(\d{4})-(\d{2})-(\d{2})_(\d{2}):(\d{2}):(\d{2})\.txt$/;
+   return ((((($1 * 100 + $2)*100 + $3)*100 + $4)*100 + $5)*100 + $6)
 }
-
-my $ix      = 0;
-my $reverse = 0;
-my $print   = 0;
-my $drgarch = 0;
-my $referenceFile;
-my $variantFile;
-
-while (defined $ARGV[$ix]) {
-   if ($ARGV[$ix] eq '-r') { 
-      $reverse = 1
-   }
-   elsif ($ARGV[$ix] eq '-p') { 
-      $print = 1
-   }
-   elsif ($ARGV[$ix] eq '-a') { 
-      $drgarch = 1
-   }
-   elsif (!($ARGV[$ix] =~ /^-/)) {
-      if (!$referenceFile) {
-         $referenceFile = $ARGV[$ix]
-      }
-      elsif (!$variantFile) {
-         $variantFile = $ARGV[$ix]
+ 
+sub resolveFile {
+   my($files, $file, $reldir, $reldirset) = @_; 
+   my $errmsg;
+   my $thefile;
+   if ($reldirset && $file =~ /^latest(-*)$/) {
+      my $delta = length($1);
+      if ($delta > @$files) {
+         # There is not enough files in the array...
+         $errmsg = "A file $delta steps ago in directory '$reldirset' was requested but there are only " . scalar(@$files) . " files in there!"
       }
       else {
-         die "Unexpected filename $ARGV[$ix]\n";
+         $thefile = catfile($reldir, $$files[$delta])
       }
    }
-   else {
-      die "Unusable argument $ARGV[$ix]\n"
+   elsif ($reldirset) {     
+      $thefile = catfile($reldir, $file)
    }
-   $ix++
+   else {
+      $thefile = $file
+   }   
+   if (!(-e $thefile && -f $thefile)) {
+      $errmsg = "File '$thefile' does not exist!"
+   }
+   return ($thefile, $errmsg)
+}
+ 
+sub argsAction {
+   my $basename = basename($0);
+   my $lkey = 'local';
+   my $usage =<<"USAGE_HEREDOC";
+Usage: $basename [-x] [-p] [-a] [-r DIR] reference_file variant_file
+
+The variant file is compared against the reference file and any
+differences are printed out.
+
+-x       : Exchange reference_file and variant_file positions on command line;
+           just to avoid editing the command line.
+-p       : List packages missing in variant_file in a one-liner; for further
+           processing via 'dnf' or 'yum'.
+-a       : Disregard 'architecture' when comparing; may give better matches.
+-r DIR   : The reference_file and variant_file, if relative, are relative to 
+           directory 'DIR'.
+           If 'DIR' is the string "$lkey", a directory based on the hostname is 
+           used instead, according to a hardcoded algorithm.
+           Additionally, in this case:
+           If the string "latest" is given as a file, it refers to that file
+           in 'DIR' that has been created most recently according to its 
+           timestamp-bearing filename.
+           Adding one or several "-" to "latest" (e.g. "latest---") selects
+           successively older files.
+           So to compare latest and latest-but-one for example:
+           $basename -r$lkey latest- latest
+USAGE_HEREDOC
+
+   # case of no arguments at all
+
+   if (@ARGV == 0) {
+      print STDERR $usage;
+      exit 1
+   }
+
+   # Get arguments using getopts(), not getopt()
+   # http://perldoc.perl.org/Getopt/Std.html
+   # http://www.perlmonks.org/?node_id=88222
+   # (See also: http://search.cpan.org/~ether/MooseX-Getopt-0.71/lib/MooseX/Getopt.pm)
+   # The getopts() function returns true unless an invalid option was found.
+   # Switchful arguments are expected first, and processed. Anything left over
+   # is left in @ARGV
+
+   my %args;
+   getopts('hxpar:', \%args);
+
+   my $help = $args{h} ? 1 : 0;
+   if ($help) { 
+      print STDERR $usage;
+      exit 1 
+   }
+ 
+   my $exchange   = $args{x} ? 1 : 0;
+   my $print      = $args{p} ? 1 : 0;
+   my $drgarch    = $args{a} ? 1 : 0;
+   my $reldir     = $args{r};
+   my $reldirset  = $reldir ? 1 : 0;
+
+   # There must be exactly two arguments left, the "left-hand" and "right-hand"
+   # (we don't check where they are in the command line, we don't really care)
+
+   if (@ARGV != 2) { 
+      print STDERR "** Expecting the reference file and the variant file. Instead: @ARGV\n\n";
+      print STDERR $usage;
+      exit 1
+   }
+ 
+   # The remaining arguments are the files (we hope). We may need to exchange them.
+
+   my $referenceFile = $ARGV[0];
+   my $variantFile   = $ARGV[1];
+
+   if ($exchange) {
+      ($variantFile,$referenceFile) = ($referenceFile,$variantFile)
+   }
+
+   # Determine relative-directory and check that it exists if needed
+
+   if ($reldirset) {
+      my $construct = (lc($reldir) eq lc($lkey));
+      if ($construct) {
+         $reldir = catdir(rootdir(),'usr','local','toolbox','rpmsnap','data',hostname());
+      }
+      if (!(-e $reldir && -d $reldir)) {
+         if ($construct) {
+            print STDERR "** The '$lkey' relative-directory is: '$reldir'\n"
+         } 
+         else { 
+            print STDERR "** The relative-directory given is: '$reldir'\n"
+         }
+         print STDERR "** However, that directory does not exist.\n\n";
+         print STDERR $usage;
+         exit 1
+      }
+   }
+
+   # If any of the requested files looks like 'latest' (if "reldirset") then we need to get the
+   # contents of relative-directory and sort it according to timestamp-in-the-filename.
+   # Otherwise, just grab the file normally.
+
+   my($theReferenceFile, $errmsgRf);
+   my($theVariantFile,   $errmsgVf);
+ 
+   if ($reldirset && ($referenceFile =~ /^latest-*$/ || $variantFile =~ /^latest-*$/)) {
+      opendir(my $dh, $reldir) || die "Cannot open the relative-directory '$reldir': $!";
+      my @files = grep { !/^\./ && /\.\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}\.txt$/ && -f catfile($reldir,$_) } readdir($dh);
+      closedir($dh);
+      @files = sort { 
+         my $aval = numerize($a);
+         my $bval = numerize($b);
+         # print "$a $b $aval $bval " . ($aval <=> $bval) . "\n";
+         ($aval <=> $bval) * -1
+      } @files;
+      ($theReferenceFile, $errmsgRf) = resolveFile(\@files, $referenceFile, $reldir, $reldirset);
+      ($theVariantFile,   $errmsgVf) = resolveFile(\@files, $variantFile,   $reldir, $reldirset); 
+   } else {
+      ($theReferenceFile, $errmsgRf) = resolveFile(\[], $referenceFile, $reldir, $reldirset);
+      ($theVariantFile,   $errmsgVf) = resolveFile(\[], $variantFile,   $reldir, $reldirset); 
+   }
+
+   if ($errmsgRf || $errmsgVf) {
+      if ($errmsgRf) {
+         print STDERR "** Reference file ($referenceFile) problem: $errmsgRf\n"
+      }
+      if ($errmsgVf) {
+         print STDERR "** Variant file ($variantFile) problem: $errmsgVf\n"
+      }
+      print STDERR "\n";
+      print STDERR $usage;
+      exit 1
+   }
+
+   # Debugging
+
+   my $debug = 0;
+   if ($debug) {
+      print "referenceFile: '$theReferenceFile'\n";
+      print "               from '$referenceFile'\n";
+      print "variantFile  : '$theVariantFile'\n";
+      print "               from '$variantFile'\n";
+      print "print        : $print\n";
+      print "drgarch      : $drgarch\n";
+      print "reldirset    : $reldirset\n";
+      print "reldir       : $reldir\n" if $reldirset;
+   }
+
+   return ($print,$drgarch,$theReferenceFile,$theVariantFile)
 }
 
-if (!$variantFile) {
-   print STDERR "The $varName file was not given -- exiting\n";
-   exit 1
-}
-
-if (!$referenceFile) {
-   print STDERR "The $refName file was not given -- exiting\n";
-   exit 1
-}
-
-if ($reverse) {
-   ($variantFile,$referenceFile) = ($referenceFile,$variantFile)
-}
+my ($print,$drgarch,$referenceFile,$variantFile) = argsAction();
 
 # ----
-# Check that files exist, then read them into (references to) array of lines
+# Read files into (references to) array of lines
 # ----
-
-if (! -f $variantFile) {
-   print STDERR "The $varName file '$variantFile' does not exist -- exiting\n";
-   exit 1
-}
-
-if (! -f $referenceFile) {
-   print STDERR "The $refName file '$referenceFile' does not exist -- exiting\n";
-   exit 1
-}
 
 my $variantLines   = slurpFile($variantFile,$varName);
 my $referenceLines = slurpFile($referenceFile,$refName);
