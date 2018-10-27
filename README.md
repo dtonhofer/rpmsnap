@@ -1,9 +1,13 @@
 rpmsnap
 =======
 
-A simple set of scripts to compare the contents of [RPM package manager databases](http://en.wikipedia.org/wiki/RPM_Package_Manager) of different machines, or of the same machine at different times.
+## Status
 
-_Status: Good for general use!_
+- Maintained. Old but serviceable.
+
+## What is it
+
+A simple set of scripts to compare the contents of [RPM package manager databases](http://en.wikipedia.org/wiki/RPM_Package_Manager) of different machines, or of the same machine at different times.
 
 There are three scripts:
 
@@ -31,7 +35,7 @@ Similar programs
 ----------------
 
 Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). 
-It uses `ssh(1)` to grab a dump of the remote RPM database.
+It uses `ssh(1)` to grab a dump of the remote RPM database. 
 
 Suggestion for use if you have several machines
 -----------------------------------------------
@@ -133,8 +137,11 @@ database (from the RPM man page; note that these may differ a bit depending the 
 Ideas and todos
 ---------------
 
-   - Add the number of missing files to the output
-   - Compare expected package size with effective package size
+   - Add the number of missing files to the output.
+   - Compare expected package size with effective package size.
+   - The rpm database is accessed by calls to `rpm`; but there is actually [RPM4](https://metacpan.org/pod/RPM4)!
+   - It might be more productive to dump everything into a relational database and work with that.
+   - Would be interesting to examine the provides/requires capability graph, too. So maybe a graph database would be even better.
 
 License
 -------

@@ -1,45 +1,51 @@
 #!/bin/bash
 
 # ----
-# Determine fully qualified hostname of the machine
+# Determine fully qualified hostname of the machine, hopefully correctly.
+# This function passes ShellCheck
 # ----
 
 function getHostname {
 
-   local hostname_short=`/bin/hostname --short`
+   local hostname_short
+   hostname_short=$(/bin/hostname --short) || {
+      echo "Could not execute 'hostname --short' -- exiting" >&2
+      exit 1
+   }
 
-   if [ $? -ne 0 ]; then 
-      echo "Could not execute 'hostname --short' -- exiting" >&2; exit 1
-   fi
+   local hostname_long
+   hostname_long=$(/bin/hostname) || {
+      echo "Could not execute 'hostname' -- exiting" >&2
+      exit 1
+   }
 
-   local hostname_long=`/bin/hostname`
-
-   if [ $? -ne 0 ]; then
-      echo "Could not execute 'hostname' -- exiting" >&2; exit 1
-   fi
+   local res
 
    if [[ $hostname_long =~ ^"$hostname_short"\..+$ ]]; then
       # "hostname_long" is a qualified version of "hostname_short"
-      echo $hostname_long
+      # which is what we want
+      res=$hostname_long
    else 
-      # both hostnames are "short" (and are equal)
-      if [[ $hostname_long != $hostname_short ]]; then
+      # both hostnames are equal and "short"
+      if [[ $hostname_long != "$hostname_short" ]]; then
          echo "Cannot happen: '$hostname_long' <> '$hostname_short' -- exiting" >&2; exit 1
       fi
 
-      local domainname=`/bin/domainname`
+      local domainname
+      domainname=$(/bin/domainname) || {
+         echo "Could not execute 'domainname' -- exiting" >&2
+         exit 1
+      }
 
-      if [ $? -ne 0 ]; then
-         echo "Could not execute 'domainname' -- exiting" >&2; exit 1
-      fi
-
-      if [[ domainname == '(none)' ]]; then
+      if [[ $domainname == '(none)' ]]; then
          # Change according to taste
-         echo "${hostname_short}.localdomain"
+         res="${hostname_short}.localdomain"
       else
-         echo "${hostname_short}.${domainname}"
+         res="${hostname_short}.${domainname}"
       fi
    fi
+
+   echo "$res"
 }
 
 # HN=$(getHostname)

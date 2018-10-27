@@ -29,20 +29,19 @@ set -o nounset
 
 # Set the installation directory; ** change this as desired **
 
-DIR=/usr/local/toolbox/rpmsnap
+DIR=~qq/rpmsnap
 
 # Used in creating the suffix of files written to DATADIR
 
-NOW=`date +%Y-%m-%d_%H:%M:%S`
+NOW=$(date "+%Y-%m-%d_%H:%M:%S")
 
-# Source a function to determine the hostname (this may be serious overkill)
+# Source a function to determine the hostname
 
 F1=$DIR/sbin/getHostname_function.sh
-source $F1
-if [[ $? != 0 ]]; then
+source $F1 || {
    echo "Could not source the getHostname() function from '$F1' -- exiting" >&2
    exit 1
-fi
+}
 
 # Perl script that creates the list of packages
 
@@ -70,32 +69,19 @@ DATADIR=$DIR/data/$MYHOSTNAME
 DOUBLE_PERSONALITY_HOST=somehost.example.com
 
 function makeFedoraSuffix {
+   local suffix
+   local file=/etc/issue
    # https://fedoraproject.org/wiki/History_of_Fedora_release_names
-   grep --quiet "Heisenbug" /etc/issue
-   if [[ $? -eq 0  ]]; then
-      echo ".f20"
-      return
-   fi
-   grep --quiet "Schrödinger’s Cat" /etc/issue
-   if [[ $? -eq 0  ]]; then
-      echo ".f19"
-      return
-   fi
-   grep --quiet "Spherical Cow" /etc/issue
-   if [[ $? -eq 0  ]]; then
-      echo ".f18"
-      return
-   fi
-   grep --quiet "Beefy Miracle" /etc/issue
-   if [[ $? -eq 0  ]]; then
-      echo ".f17"
-      return
-   fi
+   { grep --quiet "Heisenbug"         "$file" && suffix=".f20"; } ||
+   { grep --quiet "Schrödinger’s Cat" "$file" && suffix=".f19"; } ||
+   { grep --quiet "Spherical Cow"     "$file" && suffix=".f18"; } ||
+   { grep --quiet "Beefy Miracle"     "$file" && suffix=".f17"; }
    # else no suffix
+   echo "$suffix"
 }
 
-if [[ $DOUBLE_PERSONALITY_HOST == $MYHOSTNAME ]]; then
-   SUFFIX=`makeFedoraSuffix`
+if [[ $DOUBLE_PERSONALITY_HOST == "$MYHOSTNAME" ]]; then
+   SUFFIX=$(makeFedoraSuffix)
    DATADIR="${DATADIR}${SUFFIX}"
 fi
 
@@ -147,11 +133,10 @@ function keepOrDelete {
 
 if [[ ! -d "$DATADIR" ]]; then
    echo "Directory '$DATADIR' does not exist - creating it" >&2 
-   mkdir "$DATADIR"
-   if [[ $? != 0 ]]; then
+   mkdir "$DATADIR" || {
       echo "Could not create directory '$DATADIR' -- exiting" >&2
       exit 1
-   fi
+   }
 fi
 
 # ----
@@ -176,13 +161,11 @@ ERRFILE_NEW="${ERRFILE}.new"
 echo "'rpmsnap' information goes to '$OUTFILE_NEW'" >&2
 echo "'rpmsnap' errors go to '$ERRFILE_NEW'" >&2
 
-"$RPMSNAP" --verify >"$OUTFILE_NEW" 2>"$ERRFILE_NEW"
-
-if [[ $? -ne 0 ]]; then
+"$RPMSNAP" --verify >"$OUTFILE_NEW" 2>"$ERRFILE_NEW" || {
    echo "Problem running '$RPMSNAP' -- exiting." >&2
    echo "Errors may be in '$ERRFILE_NEW'" >&2
    exit 1
-fi
+}
 
 # ----
 # Compare contents of $OUTFILE_NEW with the latest $OUTFILE created.
@@ -190,11 +173,11 @@ fi
 # Note that LATEST_(OUT|ERR) may not exist yet!
 # ----
 
-LATEST_OUT=`ls "$DATADIR"/rpmsnap.*.txt 2>/dev/null | sort | tail -1`
+LATEST_OUT=$(find "$DATADIR" -name 'rpmsnap.*.txt' | sort | tail -1)
 
 keepOrDelete "$LATEST_OUT" "$OUTFILE_NEW" "$OUTFILE"
 
-LATEST_ERR=`ls "$DATADIR"/rpmsnap.*.err 2>/dev/null | sort | tail -1`
+LATEST_ERR=$(find "$DATADIR" -name 'rpmsnap.*.err' | sort | tail -1)
 
 keepOrDelete "$LATEST_ERR" "$ERRFILE_NEW" "$ERRFILE"
 
