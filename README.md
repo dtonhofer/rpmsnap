@@ -1,13 +1,29 @@
 rpmsnap
 =======
 
-## Status
-
-- Maintained. Old but serviceable.
-
 ## What is it
 
 A simple set of scripts to compare the contents of [RPM package manager databases](http://en.wikipedia.org/wiki/RPM_Package_Manager) of different machines, or of the same machine at different times.
+
+### Similar programs
+
+Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). 
+It uses `ssh(1)` to grab a dump of the remote RPM database. 
+
+## Status
+
+Maintained. Old but serviceable.
+
+## License
+
+[MIT License](http://opensource.org/licenses/MIT) with copyright held by author's former employer.
+
+Copyright (c) 2011<br>
+M-PLIFY S.A.<br>
+68, avenue de la Liberté<br>
+L-1930 Luxembourg<br>
+
+## Usage
 
 There are three scripts:
 
@@ -31,14 +47,7 @@ accumulate in a directory, tagged by creation date.</td>
 
 </table>
 
-Similar programs
-----------------
-
-Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). 
-It uses `ssh(1)` to grab a dump of the remote RPM database. 
-
-Suggestion for use if you have several machines
------------------------------------------------
+### Suggestion if you have several machines
 
 Suppose you have three machines called 'alpha.example.com', 'bravo.example.com' and 'charlie.example.com'.
 
@@ -134,8 +143,7 @@ database (from the RPM man page; note that these may differ a bit depending the 
     T : mTime differs
     P : caPabilities differ
 
-Ideas and todos
----------------
+## Ideas and todos
 
    - Add the number of missing files to the output.
    - Compare expected package size with effective package size.
@@ -143,30 +151,3 @@ Ideas and todos
    - It might be more productive to dump everything into a relational database and work with that.
    - Would be interesting to examine the provides/requires capability graph, too. So maybe a graph database would be even better.
 
-License
--------
-
-Distributed under the [MIT License](http://opensource.org/licenses/MIT); copyright held by author's former employer.
-
-Copyright (c) 2011<br>
-M-PLIFY S.A.<br>
-68, avenue de la Liberté<br>
-L-1930 Luxembourg<br>
- 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
- 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
- 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
