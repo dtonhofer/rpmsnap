@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# ----
-# Determine fully qualified hostname of the machine, hopefully correctly.
-# This function passes ShellCheck
-# ----
+# ===
+# Determine "fully qualified hostname" of the machine ... hopefully correctly.
+# Overengineered. Generally just calling $(hostname) would do.
+# ===
+# Author: David Tonhofer
+# Rights: Public Domain
+# This code passes "ShellCheck".
 
 function getHostname {
 

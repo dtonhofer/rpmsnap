@@ -11,23 +11,27 @@
 # .
 # ├── bin
 # │   └── rpmsnapcmp.pl
-# ├── data
+# │
+# ├── data                                         $DATADIR
 # │   └── yourhost.yourdomain.yourtld
 # │       ├── rpmsnap.2013-01-07_17:00:01.txt
 # │       ├── rpmsnap.2013-03-04_17:00:02.txt
 # │       ├── rpmsnap.2013-04-07_17:00:01.txt
 # │       └── rpmsnap.2013-06-07_17:00:01.txt
+# │
 # └── sbin
-#     ├── getHostname_function.sh
+#     ├── get_hostname_function.sh
 #     ├── makesnap.sh
 #     ├── prelinkfix.sh
-#     └── rpmsnap.pl
+#     └── rpmsnap.pl                               $RPMSNAP
 #
 # ==================================================================================
 
 set -o nounset
 
-# Set the installation directory; ** change this as desired **
+# Set the installation directory
+# ** change this as desired **
+# Here the installation directory is in user "qq"'s home.
 
 DIR=~qq/rpmsnap
 
@@ -37,7 +41,7 @@ NOW=$(date "+%Y-%m-%d_%H:%M:%S")
 
 # Source a function to determine the hostname
 
-F1=$DIR/sbin/getHostname_function.sh
+F1=$DIR/sbin/get_hostname_function.sh
 source $F1 || {
    echo "Could not source the getHostname() function from '$F1' -- exiting" >&2
    exit 1

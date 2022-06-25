@@ -3,20 +3,21 @@ rpmsnap
 
 ## What is it
 
-A simple set of scripts to compare the contents of [RPM package manager databases](http://en.wikipedia.org/wiki/RPM_Package_Manager) of different machines, or of the same machine at different times.
+A simple Perl script to generate a report of the contents of [RPM package manager databases](http://en.wikipedia.org/wiki/RPM_Package_Manager) of different machines, or of the same machine at different times.
+Another Perl script helps in comparing two reports.
 
 ### Similar programs
 
-Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). 
-It uses `ssh(1)` to grab a dump of the remote RPM database. 
+Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). It uses `ssh(1)` to grab a dump of a remote RPM database. 
 
 ## Status
 
-Maintained. Old but serviceable.
+- Maintained. Old but serviceable.
+- 2022-06-25: Code rearranged. Fixed so that it can deal with carets that are now starting to show up in release strings.
 
 ## License
 
-[MIT License](http://opensource.org/licenses/MIT) with copyright held by author's former employer.
+[MIT License](http://opensource.org/licenses/MIT) with original copyright held by author's former employer.
 
 Copyright (c) 2011<br>
 M-PLIFY S.A.<br>
@@ -61,7 +62,7 @@ On one machine, install a directory tree that looks like this:
     │   ├── bravo.example.com/
     │   └── charlie.example.com/
     └── sbin/
-        ├── getHostname_function.sh
+        ├── get_hostname_function.sh
         ├── makesnap.sh
         ├── prelinkfix.sh
         └── rpmsnap.pl
@@ -101,47 +102,63 @@ Then the tree may look like this after some time:
     │       ├── rpmsnap.2013-02-22_17:00:01.txt
     │       └── rpmsnap.2013-02-25_17:00:02.txt
     └── sbin/
-        ├── getHostname_function.sh
+        ├── get_gostname_function.sh
         ├── makesnap.sh
         ├── prelinkfix.sh
         └── rpmsnap.pl
 
 It is thus easy to check for RPM database differences from any machine.
 
-The summary files "rpmsnap.YYYY-MM-DD_hh:mm:ss.txt" contain long lines like these:
+`rpmsnap.pl` prints the report to STDOUT. It contains one line per package. 
+These lines may be rather longish. To improve legibility by replacing the blank
+character by a dot, use the `--dotify` option. An example report extract:
 
-    chkconfig·············1.3.59·············1.fc17···············x86_64···Fedora·Project····:        .........     97  Wed Mar  7 18:43:59 2012
-    chmlib················0.40···············5.fc17···············x86_64···Fedora·Project····:        .........     12  Fri Jan 13 02:33:34 2012
-    chrony················1.27···············0.3.pre1.fc17········x86_64···Fedora·Project····:        .......T.     28  Fri Apr 27 15:23:18 2012
-    cifs-utils············5.9················3.fc17···········.···x86_64···Fedora·Project····:        .........     17  Sun Jan 13 12:21:11 2013
-    cjet··················0.8.9··············11.fc17··············x86_64···Fedora·Project····:        .........      6  Fri Jan 13 02:42:35 2012
-    cln-debuginfo·········1.3.2··············4.fc17.1·············x86_64···Fedora·Project····:        .........   1084  Tue Feb 28 19:34:21 2012
-    cln···················1.3.2··············4.fc17.1·············x86_64···Fedora·Project····:        .5.......      7  Tue Feb 28 19:34:21 2012
-    cloog-ppl·············0.15.11············3.fc17.1·············x86_64···Fedora·Project····:        .........      7  Fri Jan 13 02:54:47 2012
-    
-Each lines lists: 
+   aajohan-comfortaa-fonts    3.101     4.fc36          noarch   Fedora Project:  .........  18  Wed 19 Jan 2022 09:54:02 PM CET 
+   aalib-libs                 1.4.0     0.43.rc5.fc36   x86_64   Fedora Project:  .........  11  Wed 19 Jan 2022 09:53:44 PM CET 
+   abattis-cantarell-fonts    0.301     7.fc36          noarch   Fedora Project:  .........  14  Wed 26 Jan 2022 08:46:41 AM CET 
+   abattis-cantarell-vf-fonts 0.301     7.fc36          noarch   Fedora Project:  .........  10  Wed 26 Jan 2022 08:46:41 AM CET 
+   abrt-addon-ccpp            2.15.1    1.fc36          x86_64   Fedora Project:  .........  61  Thu 10 Mar 2022 10:07:22 PM CET 
+   abrt-addon-kerneloops      2.15.1    1.fc36          x86_64   Fedora Project:  .........  20  Thu 10 Mar 2022 10:07:22 PM CET 
+   abrt-addon-pstoreoops      2.15.1    1.fc36          x86_64   Fedora Project:  .........   8  Thu 10 Mar 2022 10:07:22 PM CET 
+   chmlib                     0.40      26.fc36         x86_64   Fedora Project:  .........  25  Thu 20 Jan 2022 12:15:23 AM CET  
+   chrony                     4.2       5.fc36          x86_64   Fedora Project:  S.5....T.  32  Wed 16 Feb 2022 11:04:28 AM CET 
 
-   - package name
-   - package version
-   - package release
-   - package architecture
-   - package vendor
-   - OR-ed representation of the flags raised on the files of the package during check (SM5DLUGTP)
-   - number of files in the package 
-   - package build date
+Each line lists, in this column order:
 
-As reference, the following flags may be raised when `rpm` compares the actual filesystem state with its
-database (from the RPM man page; note that these may differ a bit depending the system issue):
+   - package name                e.g. `aajohan-comfortaa-fonts`
+   - package version             e.g. `3.101`
+   - package release             e.g. `4.fc36`
+   - package arichtecture        e.g. `noarch`
+   - package vendor              e.g. `Fedora Project"
+   - verification result         e.g. `.M.......` (if requested through the `--verify` option)
+   - number of files in package  e.g. `18`
+   - package builddate           e.g. `Wed 19 Jan 2022 09:54:02 PM CET`
 
-    S : file Size differs
-    M : Mode differs (includes permissions and file type)
-    5 : MD5 sum differs
-    D : Device major/minor number mismatch
-    L : readLink(2) path mismatch
-    U : User ownership differs
-    G : Group ownership differs
-    T : mTime differs
-    P : caPabilities differ
+If `--verify` has been requested, you will see the "verification result"
+column in the output. The "verification result" describes whether there was
+anything unexpected regarding the files in the package.
+
+RPM verification consists in running a number of tests on each file in the
+package. As described in the man page of rpm, there is a mnemonic letter
+corresponding to each test which may go wrong:
+
+   - `S` => file Size differs
+   - `M` => Mode differs (includes permissions and file type)
+   - `5` => digest (formerly MD5 sum) differs
+   - `D` => Device major/minor number mismatch
+   - `L` => readLink(2) path mismatch
+   - `U` => User ownership differs
+   - `G` => Group ownership differs
+   - `T` => mTime differs
+   - `P` => caPabilities differ
+
+The "verification result" contains one character for each of the above in a fixed order. That character is:
+
+1 the corresponding mnemonic letter if at least one of the files in the
+  package did not pass the corresponding test; otherwise
+2 `?` if the test could not be performed on at least one of the files in
+  the package (e.g. missing file or permission error); otherwise
+3 `.` if all the files in the package passed the test.
 
 ## Ideas and todos
 
