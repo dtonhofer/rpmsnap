@@ -436,12 +436,14 @@ sub slurpPackageList {
 sub makePackageHashes {
    my ($rpmlines,$packages,$missingStuff,$packageProblems,$verify,$verbose) = @_;
    my ($theArch,$theName,$theVersion,$theRelease,$theBuildDate,$theVendor); # buffer of package attributes
-   my $counter = 0;
    my $firstBlock = 1;
+   my $counter = 0;
+   # push a guard onto the rpmlines
+   push @$rpmlines, "STOP";
    foreach my $line (@$rpmlines) {
       chomp $line;
       $counter++;
-      if ($line =~ /^ARCH\s*:\s*(.*)$/) {
+      if ($line =~ /^ARCH\s*:\s*(.*)$/ || $line eq "STOP") {
          # next package start; if it's not the first package encountered, store the current one in progress
          if (!$firstBlock) {
             makeSinglePackageHash($packages,$missingStuff,$packageProblems,$theName,$theVersion,$theRelease,$theBuildDate,$theVendor,$theArch,$verify,$verbose)
@@ -450,8 +452,10 @@ sub makePackageHashes {
             $firstBlock = 0
          }
          # in any case we have captured the "ARCH" of the next package; reset the rest
-         $theArch = $1;
-         ($theName,$theVersion,$theRelease,$theBuildDate,$theVendor) = (undef,undef,undef,undef,undef);
+         if ($line ne "STOP") {
+            $theArch = $1;
+            ($theName,$theVersion,$theRelease,$theBuildDate,$theVendor) = (undef,undef,undef,undef,undef);
+         }
       }
       elsif ($line =~ /^NAME\s*:\s*(.*)$/) {
          # current block, continued
@@ -477,6 +481,7 @@ sub makePackageHashes {
          die "Unexpected line '$line' -- exiting\n"
       }
    }
+   die unless $counter == scalar(@$rpmlines);
 }
 
 # ---

@@ -14,6 +14,7 @@ Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). It uses `ss
 - Maintained. Old but serviceable.
 - 2011-XX-XX: The first version was created in the context of administration of a handful of machines running Red Hat Linux.
 - 2022-06-25: Code rearranged. Fixed so that it can deal with carets that are now starting to show up in release strings.
+- 2022-07-04: Gross bug fixed whereby the last package in the rpm-generated package list was not considered.
 
 ## License
 
