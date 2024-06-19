@@ -302,13 +302,34 @@ sub onlyOneEntryInRpmDatabaseOrDie {
 sub getAllVerifyLinesForPackage {
    my($desig) = @_;
    my $escDesig = escapeDesignator($desig);
-   # pipe in "list form" here; the parameters are not transformed by a shell
+   #
+   # The RPM command without the "verbose" gives a lot less output than the one with!
+   # The manpage says: "Files that were not installed from the package, for example, documentation files
+   # excluded on installation using the "--excludedocs" option, will be silently ignored."
+   #
+   # BUG!
+   #
+   # We seem to not process the "attribute marker" correctly. It precedes the filename:
+   #
+   # c %config configuration file.
+   # d %doc documentation file.
+   # g %ghost file (i.e. the file contents are not included in the package payload).
+   # l %license license file.
+   # r %readme readme file.
+   # (but there is also "m", what does it mean?)
+   #
+   # See https://bugzilla.redhat.com/show_bug.cgi?id=2256014 the documentation should soon show:
+   #
+   # a %artifact a build side-effect file (such as buildid links)
+   # m %missingok file missing is not a verify failure.
+   #
+   # Pipe in "list form" here; the parameters are not transformed by a shell
    # https://perldoc.perl.org/functions/open
    open(my $fh,"-|") || exec($RPM,"--verify","--verbose",$escDesig) or die "Could not open RPM pipe: $!\n";
    my @lines = <$fh>;
    # Don't care about errors here when closing.
    # Indeed "prelink" warnings lead to non-zero return!
-   close($fh); # or die "Could not close RPM pipe when verifying using designator '$desig'\n"
+   close($fh); # or warn "Could not close RPM pipe when verifying using designator '$desig'\n"
    return \@lines # return reference, not array
 }
 

@@ -9,12 +9,15 @@ A simple Perl script to generate reports of the contents of [Red Hat Package Man
 
 Paul Waterman's [rpmscomp](https://github.com/pdwaterman/rpmscomp/). It uses `ssh(1)` to grab a dump of a remote RPM database. 
 
+There is a Perl module to access the PRM database: [RPM4](https://metacpan.org/pod/RPM4). We don't use it though and call the `rpm(8)` command through Perl's [https://perldoc.perl.org/functions/system](`system()`].
+
 ## Status
 
 - Maintained. Old but serviceable.
 - 2011-XX-XX: The first version was created in the context of administration of a handful of machines running Red Hat Linux.
 - 2022-06-25: Code rearranged. Fixed so that it can deal with carets that are now starting to show up in release strings.
 - 2022-07-04: Gross bug fixed whereby the last package in the rpm-generated package list was not considered.
+- 2024-06-19: Reorganized the tree of files. Slight maintenance.
 
 ## License
 
@@ -25,6 +28,8 @@ M-PLIFY S.A.<br>
 68, avenue de la Liberté<br>
 L-1930 Luxembourg<br>
 
+_The above address has been out of date for a decade now, but let's keep it_
+
 # Usage
 
 There are three scripts:
@@ -33,7 +38,7 @@ There are three scripts:
 
 <tr>
 <td>rpmsnap.pl</td>
-<td>Access the RPM database using the "rpm" command and create a human-readable report of its contents on STDOUT.</td>
+<td>Access the RPM database using the "rpm" command directly and create a human-readable report of its contents on STDOUT.</td>
 </tr>
 
 <tr>
@@ -109,11 +114,13 @@ On one machine, install a directory tree that looks like this:
 
     rpm/
     ├── bin/
-    │   └── rpmsnapcmp.pl
+    │   ├── rpmsnapcmp.pl
+    │   └── see.sh
     ├── data/
     │   ├── alpha.example.com/
     │   ├── bravo.example.com/
     │   └── charlie.example.com/
+    ├── do -> ./sbin/makesnap.sh
     └── sbin/
         ├── get_hostname_function.sh
         ├── makesnap.sh
@@ -124,7 +131,8 @@ Share and synchronize this directory tree among all the machines by putting it o
 system or by using a versioning system like svn or git.
 
 Make sure `makesnap.sh` is called regularly (for example, every 2nd day) on all the machines
-via cron (not necessarily as root) by a suitable crontab entry.
+via cron (not necessarily as root) by a suitable crontab entry. The symlink `do` is just there
+to find the command more easily when one is on the command line.
 
 Then summary files and files listing the errors encountered during generation will accumulate under the
 hostname-specific directories. `makesnap.sh` makes sure that a new summary is only kept 
@@ -137,7 +145,8 @@ Then the tree may look like this after some time:
 
     rpm/
     ├── bin
-    │   └── rpmsnapcmp.pl
+    │   ├── rpmsnapcmp.pl
+    │   └── see.sh
     ├── data
     │   ├── alpha.example.com
     │   │   ├── rpmsnap.2012-10-04_17:00:01.err
@@ -154,6 +163,7 @@ Then the tree may look like this after some time:
     │       ├── rpmsnap.2013-02-19_17:00:01.txt
     │       ├── rpmsnap.2013-02-22_17:00:01.txt
     │       └── rpmsnap.2013-02-25_17:00:02.txt
+    ├── do -> ./sbin/makesnap.sh
     └── sbin/
         ├── get_gostname_function.sh
         ├── makesnap.sh
@@ -169,4 +179,11 @@ It is thus easy to check for RPM database differences from any machine.
    - The rpm database is accessed by calls to `rpm`; but there is actually [RPM4](https://metacpan.org/pod/RPM4)!
    - It might be more productive to dump everything into a relational database and work with that.
    - Would be interesting to examine the provides/requires capability graph, too. So maybe a graph database would be even better.
+
+# Bugs
+
+   - If there are several packages with different version and they get updated and some
+     get dropped, (case of the kernel packages for example) `rpmsnapcmp.pl` does not
+     output a meaningful correspondence. 
+   - See getAllVerifyLinesForPackage() for a problem with flag processing.
 
